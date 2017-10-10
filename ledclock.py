@@ -28,11 +28,11 @@ def wifi_connect():
         print('ip config:', sta_if.ifconfig())
         return True
 
-def display(a,b,c,d):
+def display(a,b,c,d,h):
     # data register
     dreg = bytearray(3)
-    dreg[0] = 0b10000000 #** amend first byte to 1 to set brightness to max**
-    dreg[1] = (a << 4) + b
+    dreg[0] = 0b10000000 | (h << 4) # if seconds are odd flash bank1 decimal
+    dreg[1] = (a << 4) + b # shift first nibble and add second to form a byte
     dreg[2] = (c << 4) + d
     cs.off()
     spi.write(dreg)
@@ -40,7 +40,9 @@ def display(a,b,c,d):
 
     # control register
     creg = bytearray(1)
-    creg[0] = 0b11000001
+    creg[0] = 0b11000001 # first 2 bits define special decode option.
+    if a == 0:
+        creg[0] |= 10000 # blank first digit with special decode
     cs.off()
     spi.write(creg)
     cs.on()
@@ -73,7 +75,8 @@ def printTime(h, m, s):
     h2 = h%10
     m1 = int(m/10)
     m2 = m%10
-    display(h1,h2,m1,m2)
+    s1 = s%2
+    display(h1,h2,m1,m2,s1)
 
 # initialise spi
 spi = machine.SPI(1, baudrate=5000000, polarity=0, phase=0)
