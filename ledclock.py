@@ -1,24 +1,39 @@
-
-
+import network
 import time
 import ntptime
 import machine
-import ssd1306
 
-i2c = machine.I2C(scl=machine.Pin(5), sda=machine.Pin(4))
-oled = ssd1306.SSD1306_I2C(64, 48, i2c) # width, height, pins
-
-spi = machine.SPI(1, baudrate=5000000, polarity=0, phase=0)
-cs = machine.Pin(15, machine.Pin.OUT)
-cs.on()
+def wifi_connect():
+    sta_if = network.WLAN(network.STA_IF)
+    try:
+        with open("credentials.txt") as c:
+            u = c.readline()
+            p = c.readline()
+    except OSError:
+        print('couldn\'t load credentials file')
+    if not sta_if.isconnected():
+        timeout = time.time() + 10 #seconds
+        print('connecting to network:', u)
+        sta_if.active(True)
+        sta_if.connect(u.strip(), p.strip()) # strip newlines
+        while not sta_if.isconnected():
+            countdown = timeout - time.time()
+            if countdown > 0:
+                print('timeout in ', countdown, 'seconds')
+                time.sleep(1)
+            else: 
+                print('could\'t connect. timed out!')
+                return False
+        print('connected!')
+        print('ip config:', sta_if.ifconfig())
+        return True
 
 def display(a,b,c,d):
     # data register
     dreg = bytearray(3)
-    dreg[0] = 0b00000000
-    dreg[1] = 0b00010001
-    dreg[2] = 0b00100011
-
+    dreg[0] = 0b10000000 #** amend first byte to 1 to set brightness to max**
+    dreg[1] = (a << 4) + b
+    dreg[2] = (c << 4) + d
     cs.off()
     spi.write(dreg)
     cs.on()
@@ -26,7 +41,6 @@ def display(a,b,c,d):
     # control register
     creg = bytearray(1)
     creg[0] = 0b11000001
-
     cs.off()
     spi.write(creg)
     cs.on()
@@ -53,18 +67,21 @@ def checkUpdate(last, interv):
     else:
         return False
 
-def pad(p):
-    if p < 10:
-        return '0' + str(p)
-    else:
-        return str(p)
-
 def printTime(h, m, s):
     print(time.localtime())
-    oled.fill(0) # clear the screen
-    oled.text(pad(h + 1) + ':' + pad(m) + ':' + pad(s), 0, 0) #hack for BST!!
-    oled.show()
+    h1 = int(h/10)
+    h2 = h%10
+    m1 = int(m/10)
+    m2 = m%10
+    display(h1,h2,m1,m2)
 
+# initialise spi
+spi = machine.SPI(1, baudrate=5000000, polarity=0, phase=0)
+cs = machine.Pin(15, machine.Pin.OUT) # chip select
+cs.on()
+
+# connect to network
+wifi_connect() #** add retry functionality**
 setTime()
 oldTime = time.time()
 
@@ -74,5 +91,5 @@ while True:
 
     if time.time() != oldTime:
         oldTime = time.time()
-        # printTime(time.localtime()[3], time.localtime()[4], time.localtime()[5])
-        # printBinTime(time.localtime()[3], time.localtime()[4], time.localtime()[5])
+        printTime(time.localtime()[3]+1, time.localtime()[4],
+                time.localtime()[5]) #BST hack for hour!
