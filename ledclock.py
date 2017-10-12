@@ -34,45 +34,6 @@ def wifi_connect():
         print('ip config:', sta_if.ifconfig())
         return True
 
-def displayTime(h, m, s):
-    print(time.localtime())
-    a = int(h / 10)
-    b = h % 10
-    c = int(m / 10)
-    d = m % 10
-    h = (s % 2) * 112
-
-    # data register
-    dreg = bytearray(3)
-    dreg[0] = 0b10000000 | h # if seconds are odd flash all decimals
-    dreg[1] = (a << 4) + b # shift first nibble and add second to form a byte
-    dreg[2] = (c << 4) + d
-    writeOut(dreg)
-
-    # control register
-    creg = bytearray(1)
-    creg[0] = 0b11000001 # first 2 bits define special decode option.
-    if a == 0:
-        creg[0] |= 10000 # blank first digit with special decode
-    writeOut(creg)
-
-# displays the word 'sync'
-def displaySync():
-    dreg = bytearray(3)
-    dreg[0] = 0b10000000
-    dreg[1] = 0b01011100
-    dreg[2] = 0b01100001
-    writeOut(dreg)
-
-    creg = bytearray(1)
-    creg[0] = 0b11001111
-    writeOut(creg)
-
-def writeOut(self):
-    cs.off()
-    spi.write(self)
-    cs.on()
-
 def setTime():
     global LASTUPDATE
     global UPDATEINTERVAL
@@ -89,15 +50,58 @@ def setTime():
         print('trying again in ' + str(UPDATEINTERVAL) + ' seconds')
         return False
 
+class SevenSeg:
+    def __init__(self, csPin):
+        # initialise spi
+        self.spi = machine.SPI(1, baudrate=5000000, polarity=0, phase=0)
+        self.cs = machine.Pin(csPin, machine.Pin.OUT) # chip select
+        self.cs.on()
+
+    def writeOut(self, data):
+        self.cs.off()
+        self.spi.write(data)
+        self.cs.on()
+
+    def printSync(self):
+        # displays the word 'sync'
+        dreg = bytearray(3)
+        dreg[0] = 0b10000000
+        dreg[1] = 0b01011100
+        dreg[2] = 0b01100001
+        self.writeOut(dreg)
+
+        creg = bytearray(1)
+        creg[0] = 0b11001111
+        self.writeOut(creg)
+
+    def printTime(self, h, m, s):
+        print(time.localtime())
+        a = int(h / 10)
+        b = h % 10
+        c = int(m / 10)
+        d = m % 10
+        h = (s % 2) * 112
+
+        # data register
+        dreg = bytearray(3)
+        dreg[0] = 0b10000000 | h # if seconds are odd flash all decimals
+        dreg[1] = (a << 4) + b # shift first nibble and add second to form a byte
+        dreg[2] = (c << 4) + d
+        self.writeOut(dreg)
+
+        # control register
+        creg = bytearray(1)
+        creg[0] = 0b11000001 # first 2 bits define special decode option.
+        if a == 0:
+            creg[0] |= 10000 # blank first digit with special decode
+        self.writeOut(creg)
+
 if __name__ == "__main__":
-    # initialise spi
-    spi = machine.SPI(1, baudrate=5000000, polarity=0, phase=0)
-    cs = machine.Pin(15, machine.Pin.OUT) # chip select
-    cs.on()
+    display = SevenSeg(15) # init display with GPIO15 as the CS pin
 
     # connect to network
     wifi_connect() #** add retry functionality**
-    displaySync()
+    display.printSync()
     while setTime() == False:
         print('failed to set during initialise')
         time.sleep(10)
@@ -110,5 +114,5 @@ if __name__ == "__main__":
 
         if time.time() != oldTime:
             oldTime = time.time()
-            displayTime(time.localtime()[3]+1, time.localtime()[4],
+            display.printTime(time.localtime()[3]+1, time.localtime()[4],
                     time.localtime()[5]) #BST hack for hour!
