@@ -7,7 +7,7 @@ a ntp synching clock in micropython
 import network
 import time
 import ntptime
-import machine
+from machine import Pin, SPI
 
 def wifi_connect():
     sta_if = network.WLAN(network.STA_IF)
@@ -53,8 +53,8 @@ def setTime():
 class SevenSeg:
     def __init__(self, csPin):
         # initialise spi
-        self.spi = machine.SPI(1, baudrate=5000000, polarity=0, phase=0)
-        self.cs = machine.Pin(csPin, machine.Pin.OUT) # chip select
+        self.spi = SPI(1, baudrate=5000000, polarity=0, phase=0)
+        self.cs = Pin(csPin, Pin.OUT) # chip select
         self.cs.on()
 
     def writeOut(self, data):
@@ -80,7 +80,10 @@ class SevenSeg:
         b = h % 10
         c = int(m / 10)
         d = m % 10
-        h = (s % 2) * 112
+        if dip2.value() == 1:
+            h = (s % 2) * 112
+        else:
+            h = 112
 
         # data register
         dreg = bytearray(3)
@@ -92,12 +95,15 @@ class SevenSeg:
         # control register
         creg = bytearray(1)
         creg[0] = 0b11000001 # first 2 bits define special decode option.
-        if a == 0:
+        if a == 0 and dip1.value() == 1:
             creg[0] |= 10000 # blank first digit with special decode
         self.writeOut(creg)
 
 if __name__ == "__main__":
     display = SevenSeg(15) # init display with GPIO15 as the CS pin
+
+    dip1 = Pin(5, Pin.IN, Pin.PULL_UP)
+    dip2 = Pin(4, Pin.IN, Pin.PULL_UP)
 
     # connect to network
     wifi_connect() #** add retry functionality**
