@@ -1,3 +1,9 @@
+"""led clock
+a ntp synching clock in micropython 
+@author Russ Winch
+@version October 2017
+"""
+
 import network
 import time
 import ntptime
@@ -83,23 +89,26 @@ def setTime():
         print('trying again in ' + str(UPDATEINTERVAL) + ' seconds')
         return False
 
-# initialise spi
-spi = machine.SPI(1, baudrate=5000000, polarity=0, phase=0)
-cs = machine.Pin(15, machine.Pin.OUT) # chip select
-cs.on()
+if __name__ == "__main__":
+    # initialise spi
+    spi = machine.SPI(1, baudrate=5000000, polarity=0, phase=0)
+    cs = machine.Pin(15, machine.Pin.OUT) # chip select
+    cs.on()
 
-# connect to network
-wifi_connect() #** add retry functionality**
-while setTime() == False:
+    # connect to network
+    wifi_connect() #** add retry functionality**
     displaySync()
-oldTime = time.time()
+    while setTime() == False:
+        print('failed to set during initialise')
+        time.sleep(10)
+    oldTime = time.time()
 
-while True:
-    # if checkUpdate(LASTUPDATE, UPDATEINTERVAL) == True:
-    if time.time() - (UPDATEINTERVAL) > LASTUPDATE:
-        setTime()
+    while True:
+        # if checkUpdate(LASTUPDATE, UPDATEINTERVAL) == True:
+        if time.time() - (UPDATEINTERVAL) > LASTUPDATE:
+            setTime()
 
-    if time.time() != oldTime:
-        oldTime = time.time()
-        displayTime(time.localtime()[3]+1, time.localtime()[4],
-                time.localtime()[5]) #BST hack for hour!
+        if time.time() != oldTime:
+            oldTime = time.time()
+            displayTime(time.localtime()[3]+1, time.localtime()[4],
+                    time.localtime()[5]) #BST hack for hour!
