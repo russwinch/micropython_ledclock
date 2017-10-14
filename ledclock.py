@@ -50,7 +50,16 @@ def setTime():
         print('trying again in ' + str(UPDATEINTERVAL) + ' seconds')
         return False
 
+# class DipSwitch:
+#     '''controls dipswitches. not working yet but should enable easy addition'''
+#     def __init__(self, switchPin):
+#        self = Pin(switchPin, Pin.IN, Pin.PULL_UP)
+
+    # def val(self):
+    #     return 1 - self.Value()
+
 class SevenSeg:
+    '''control of seven segment displays via MC14489B LED driver'''
     def __init__(self, csPin):
         # initialise spi
         self.spi = SPI(1, baudrate=5000000, polarity=0, phase=0)
@@ -74,6 +83,10 @@ class SevenSeg:
         creg[0] = 0b11001111
         self.writeOut(creg)
 
+    def printNet(self):
+        # displays the word 'net'
+        pass
+
     def printTime(self, h, m, s):
         print(time.localtime())
         a = int(h / 10)
@@ -81,13 +94,13 @@ class SevenSeg:
         c = int(m / 10)
         d = m % 10
         if dip2.value() == 1:
-            h = (s % 2) * 112
+            h = (s % 2)
         else:
-            h = 112
+            h = 1
 
         # data register
         dreg = bytearray(3)
-        dreg[0] = 0b10000000 | h # if seconds are odd flash all decimals
+        dreg[0] = 0b10000000 | h * 112 # if seconds are odd flash all decimals
         dreg[1] = (a << 4) + b # shift first nibble and add second to form a byte
         dreg[2] = (c << 4) + d
         self.writeOut(dreg)
@@ -105,16 +118,21 @@ if __name__ == "__main__":
     dip1 = Pin(5, Pin.IN, Pin.PULL_UP)
     dip2 = Pin(4, Pin.IN, Pin.PULL_UP)
 
+    # non working dipswitch class - to be continued
+    # switchPins = [5,4]
+    # dip = list()
+    # for i in range(len(switchPins)):
+    #     dip.append(DipSwitch(switchPins[i]))
+
     # connect to network
     wifi_connect() #** add retry functionality**
     display.printSync()
     while setTime() == False:
-        print('failed to set during initialise')
-        time.sleep(10)
+        print('failed to set during initialise, 5 second retry')
+        time.sleep(5)
     oldTime = time.time()
 
     while True:
-        # if checkUpdate(LASTUPDATE, UPDATEINTERVAL) == True:
         if time.time() - (UPDATEINTERVAL) > LASTUPDATE:
             setTime()
 
