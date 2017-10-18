@@ -83,20 +83,30 @@ class SevenSeg:
         creg[0] = 0b11001111
         self.writeOut(creg)
 
-    def printNet(self):
-        # displays the word 'net'
-        pass
+    def printConn(self):
+        # displays the word 'Conn'
+        dreg = bytearray(3)
+        dreg[0] = 0b10000000
+        dreg[1] = 0b11000111
+        dreg[2] = 0b01100110
+        self.writeOut(dreg)
+
+        creg = bytearray(1)
+        creg[0] = 0b11001111
+        self.writeOut(creg)
 
     def printTime(self, h, m, s):
         print(time.localtime())
+        if h > 12 and dip3.value() == 1:
+            h -= 12 # 12 hour mode
         a = int(h / 10)
         b = h % 10
         c = int(m / 10)
         d = m % 10
         if dip2.value() == 1:
-            h = (s % 2)
+            h = (s % 2) # flashing separator
         else:
-            h = 1
+            h = 1 # static separator
 
         # data register
         dreg = bytearray(3)
@@ -115,8 +125,9 @@ class SevenSeg:
 if __name__ == "__main__":
     display = SevenSeg(15) # init display with GPIO15 as the CS pin
 
-    dip1 = Pin(5, Pin.IN, Pin.PULL_UP)
-    dip2 = Pin(4, Pin.IN, Pin.PULL_UP)
+    dip1 = Pin(5, Pin.IN, Pin.PULL_UP) # D1
+    dip2 = Pin(4, Pin.IN, Pin.PULL_UP) # D2
+    dip3 = Pin(16, Pin.IN) # D3 - built in pull up
 
     # non working dipswitch class - to be continued
     # switchPins = [5,4]
@@ -125,6 +136,7 @@ if __name__ == "__main__":
     #     dip.append(DipSwitch(switchPins[i]))
 
     # connect to network
+    display.printConn()
     wifi_connect() #** add retry functionality**
     display.printSync()
     while setTime() == False:
