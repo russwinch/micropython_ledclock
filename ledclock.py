@@ -97,16 +97,18 @@ class SevenSeg:
 
     def printTime(self, h, m, s):
         print(time.localtime())
-        if h > 12 and dip3.value() == 1:
-            h -= 12 # 12 hour mode
+        # print(time.time())
+        # print(ntptime.time())
+        # if h > 12 and dip3.value() == 1:
+        #     h -= 12 # 12 hour mode
         a = int(h / 10)
         b = h % 10
         c = int(m / 10)
         d = m % 10
-        if dip2.value() == 1:
-            h = (s % 2) # flashing separator
-        else:
-            h = 1 # static separator
+        # if dip2.value() == 1:
+        h = (s % 2) # flashing separator
+        # else:
+        #     h = 1 # static separator
 
         # data register
         dreg = bytearray(3)
@@ -127,7 +129,7 @@ if __name__ == "__main__":
 
     dip1 = Pin(5, Pin.IN, Pin.PULL_UP) # D1
     dip2 = Pin(4, Pin.IN, Pin.PULL_UP) # D2
-    dip3 = Pin(16, Pin.IN) # D3 - built in pull up
+    dip3 = Pin(16, Pin.IN) # D0
 
     # non working dipswitch class - to be continued
     # switchPins = [5,4]
