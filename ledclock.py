@@ -155,5 +155,5 @@ if __name__ == "__main__":
 
         if time.time() != oldTime:
             oldTime = time.time()
-            display.printTime(time.localtime()[3]+1, time.localtime()[4],
-                    time.localtime()[5]) #BST hack for hour!
+            display.printTime(time.localtime()[3], time.localtime()[4],
+                    time.localtime()[5])
