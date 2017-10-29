@@ -1,15 +1,18 @@
 """led clock
-a ntp synching clock in micropython 
+a ntp synching clock in micropython
 @author Russ Winch
 @version October 2017
 """
 
-import network
 import time
+import network
 import ntptime
 from machine import Pin, SPI
 
 def wifi_connect():
+    '''
+    connects to wifi
+    '''
     sta_if = network.WLAN(network.STA_IF)
     try:
         with open("credentials.txt") as c:
@@ -27,7 +30,7 @@ def wifi_connect():
             if countdown > 0:
                 print('timeout in ', countdown, 'seconds')
                 time.sleep(1)
-            else: 
+            else:
                 print('could\'t connect. timed out!')
                 return False
         print('connected!')
