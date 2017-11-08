@@ -10,69 +10,52 @@ import network
 import ntptime
 from machine import Pin, SPI
 
-def wifi_connect():
-    """
-    connects to wifi
-    """
-    sta_if = network.WLAN(network.STA_IF)
-    try:
-        with open("credentials.txt") as c:
-            uid = c.readline()
-            pasw = c.readline()
-    except OSError:
-        print('couldn\'t load credentials file')
-    if not sta_if.isconnected():
-        timeout = time.time() + 20 #seconds
-        print('connecting to network:', uid)
-        sta_if.active(True)
-        sta_if.connect(uid.strip(), pasw.strip()) # strip newlines
-        while not sta_if.isconnected():
-            countdown = timeout - time.time()
-            if countdown > 0:
-                print('timeout in ', countdown, 'seconds')
-                time.sleep(1)
-            else:
-                print('could\'t connect. timed out!')
-                return False
-        print('connected!')
-        print('ip config:', sta_if.ifconfig())
-        return True
-
 class Wifi(object):
     """
     network functionality
     """
 
     # import network # required here?
-    timeout = 10 # seconds
+    timeout = 15 # seconds
     
     def __init__(self):
         self.net = network.WLAN(network.STA_IF)
 
     def retrieve_credentials(self):
+    """
+    collects wifi uid and password from text file
+    file should be named 'credentials.txt'
+    uid and password should be on separate lines:
+    uid
+    pass
+    """
         try:
             with open("credentials.txt") as c:
                 uid = c.readline()
                 pasw = c.readline()
                 return {'uid': uid.strip(), 'pasw': pasw.strip()}
         except OSError:
-            print('couldn\'t load credentials file')
+            print("couldn't load credentials file")
             return False
 
     def connect(self):
         if not self.net.isconnected():
-            creds = self.retrieve_credentials() # cant currently handle failure
-            timeout = time.time() + 20 #seconds
-            print('connecting to network:', creds['uid'])
+            creds = self.retrieve_credentials()
+            if creds == False:
+                print("failed due to no wifi credentials. won't retry")
+                return False
+            print("connecting to network:", creds["uid"])
             self.net.active(True)
             self.net.connect(creds['uid'], creds['pasw'])
+            timeout += time.time()
             while not self.net.isconnected():
+                print(self.net.status())
                 countdown = timeout - time.time()
                 if countdown > 0:
-                    print('timeout in ', countdown, 'seconds')
+                    print("timeout in ", countdown, "seconds")
                     time.sleep(1)
                 else:
-                    print('could\'t connect. timed out!')
+                    print("could't connect. timed out!")
                     return False
             print('connected!')
             print('ip config:', self.net.ifconfig())
@@ -90,13 +73,13 @@ def setTime():
     try:
         ntptime.settime()
         UPDATEINTERVAL = 300 #5mins
-        print('succesfully synced time from ntp server: ' + ntptime.host)
-        print('next update in ' + str(UPDATEINTERVAL) + ' seconds')
+        print("succesfully synced time from ntp server: " + ntptime.host)
+        print("next update in " + str(UPDATEINTERVAL) + " seconds")
         return True
     except OSError:
         UPDATEINTERVAL = 10 #seconds
-        print('error, couldn\'t retrieve time')
-        print('trying again in ' + str(UPDATEINTERVAL) + ' seconds')
+        print("error, couldn't retrieve time")
+        print("trying again in " + str(UPDATEINTERVAL) + " seconds")
         return False
 
 # class DipSwitch:
