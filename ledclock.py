@@ -1,4 +1,5 @@
-"""led clock
+"""
+led clock
 a ntp synching clock in micropython
 @author Russ Winch
 @version October 2017
@@ -9,33 +10,61 @@ import network
 import ntptime
 from machine import Pin, SPI
 
-def wifi_connect():
-    '''
-    connects to wifi
-    '''
-    sta_if = network.WLAN(network.STA_IF)
-    try:
-        with open("credentials.txt") as c:
-            uid = c.readline()
-            pasw = c.readline()
-    except OSError:
-        print('couldn\'t load credentials file')
-    if not sta_if.isconnected():
-        timeout = time.time() + 10 #seconds
-        print('connecting to network:', uid)
-        sta_if.active(True)
-        sta_if.connect(uid.strip(), pasw.strip()) # strip newlines
-        while not sta_if.isconnected():
-            countdown = timeout - time.time()
-            if countdown > 0:
-                print('timeout in ', countdown, 'seconds')
-                time.sleep(1)
-            else:
-                print('could\'t connect. timed out!')
+class Wifi(object):
+    """
+    network functionality
+    """
+
+    # import network # required here?
+    timeout = 15 # seconds
+    
+    def __init__(self):
+        self.net = network.WLAN(network.STA_IF)
+
+    def retrieve_credentials(self):
+        """
+        collects wifi uid and password from text file
+        file should be named 'credentials.txt'
+        uid and password should be on separate lines:
+        uid
+        pass
+        """
+        try:
+            with open("credentials.txt") as c:
+                uid = c.readline()
+                pasw = c.readline()
+                return {'uid': uid.strip(), 'pasw': pasw.strip()}
+        except OSError:
+            print("couldn't load credentials file")
+            return False
+
+    def connect(self):
+        if not self.net.isconnected():
+            creds = self.retrieve_credentials()
+            if creds == False:
+                print("failed due to no wifi credentials. won't retry")
                 return False
-        print('connected!')
-        print('ip config:', sta_if.ifconfig())
-        return True
+            print("connecting to network:", creds["uid"])
+            self.net.active(True)
+            self.net.connect(creds['uid'], creds['pasw'])
+            timeout += time.time()
+            while not self.net.isconnected():
+                print(self.net.status())
+                countdown = timeout - time.time()
+                if countdown > 0:
+                    print("timeout in ", countdown, "seconds")
+                    time.sleep(1)
+                else:
+                    print("could't connect. timed out!")
+                    return False
+            print('connected!')
+            print('ip config:', self.net.ifconfig())
+            return True
+
+    def test_connected(self):
+        print(self.net.status())
+        print(self.net.ifconfig())
+        return self.net.isconnected()
 
 def setTime():
     success_update = 300 # 5 mins
@@ -44,12 +73,12 @@ def setTime():
     try:
         ntptime.settime()
         update_interval = success_update
-        print('succesfully synced time from ntp server: ' + ntptime.host)
-        print('next update in ' + str(update_interval) + ' seconds')
+        print("succesfully synced time from ntp server: " + ntptime.host)
+        print("next update in " + str(update_interval) + " seconds")
     except OSError:
         update_interval = fail_update
-        print('error, couldn\'t retrieve time')
-        print('trying again in ' + str(update_interval) + ' seconds')
+        print("error, couldn't retrieve time")
+        print("trying again in " + str(update_interval) + " seconds")
     finally:
         return last_update, update_interval
 
@@ -61,8 +90,8 @@ def setTime():
     # def val(self):
     #     return 1 - self.Value()
 
-class SevenSeg:
-    '''control of seven segment displays via MC14489B LED driver'''
+class SevenSeg(object):
+    """control of seven segment displays via MC14489B LED driver"""
     def __init__(self, csPin):
         # initialise spi
         self.spi = SPI(1, baudrate=5000000, polarity=0, phase=0)
@@ -142,7 +171,9 @@ if __name__ == "__main__":
 
     # connect to network
     display.printConn()
-    wifi_connect() #** add retry functionality**
+    wifi = Wifi()
+    wifi.connect()
+
     display.printSync()
     last_update, update_interval = setTime()
     # while setTime() == False:
