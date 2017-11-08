@@ -22,13 +22,13 @@ class Wifi(object):
         self.net = network.WLAN(network.STA_IF)
 
     def retrieve_credentials(self):
-    """
-    collects wifi uid and password from text file
-    file should be named 'credentials.txt'
-    uid and password should be on separate lines:
-    uid
-    pass
-    """
+        """
+        collects wifi uid and password from text file
+        file should be named 'credentials.txt'
+        uid and password should be on separate lines:
+        uid
+        pass
+        """
         try:
             with open("credentials.txt") as c:
                 uid = c.readline()
@@ -174,7 +174,6 @@ if __name__ == "__main__":
     wifi = Wifi()
     wifi.connect()
 
-    # wifi_connect() #** add retry functionality**
     display.printSync()
     while setTime() == False:
         print('failed to set during initialise, 5 second retry')

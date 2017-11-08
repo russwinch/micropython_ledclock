@@ -7,3 +7,4 @@ To do:
 1. notification if out of sync or wifi dropped
 1. auto dst adjust
 1. wifi management - AP and webpage if not connected
+1. increase accuracy with rtc
