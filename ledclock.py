@@ -38,20 +38,20 @@ def wifi_connect():
         return True
 
 def setTime():
-    global LASTUPDATE
-    global UPDATEINTERVAL
-    LASTUPDATE = time.time()
+    success_update = 300 # 5 mins
+    fail_update = 10 # seconds
+    last_update = time.time()
     try:
         ntptime.settime()
-        UPDATEINTERVAL = 300 #5mins
+        update_interval = success_update
         print('succesfully synced time from ntp server: ' + ntptime.host)
-        print('next update in ' + str(UPDATEINTERVAL) + ' seconds')
-        return True
+        print('next update in ' + str(update_interval) + ' seconds')
     except OSError:
-        UPDATEINTERVAL = 10 #seconds
+        update_interval = fail_update
         print('error, couldn\'t retrieve time')
-        print('trying again in ' + str(UPDATEINTERVAL) + ' seconds')
-        return False
+        print('trying again in ' + str(update_interval) + ' seconds')
+    finally:
+        return last_update, update_interval
 
 # class DipSwitch:
 #     '''controls dipswitches. not working yet but should enable easy addition'''
@@ -144,14 +144,16 @@ if __name__ == "__main__":
     display.printConn()
     wifi_connect() #** add retry functionality**
     display.printSync()
-    while setTime() == False:
-        print('failed to set during initialise, 5 second retry')
-        time.sleep(5)
+    last_update, update_interval = setTime()
+    # while setTime() == False:
+    #     print('failed to set during initialise, 5 second retry')
+    #     time.sleep(5)
+
     oldTime = time.time()
 
     while True:
-        if time.time() - (UPDATEINTERVAL) > LASTUPDATE:
-            setTime()
+        if (time.time() - update_interval) > last_update:
+            last_update, update_interval = setTime()
 
         if time.time() != oldTime:
             oldTime = time.time()
