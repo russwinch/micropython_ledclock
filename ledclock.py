@@ -16,7 +16,6 @@ class Wifi(object):
     """
 
     # import network # required here?
-    timeout = 15 # seconds
     
     def __init__(self):
         self.net = network.WLAN(network.STA_IF)
@@ -39,6 +38,8 @@ class Wifi(object):
             return False
 
     def connect(self):
+        timeout = 15 # seconds
+
         if not self.net.isconnected():
             creds = self.retrieve_credentials()
             if creds == False:
