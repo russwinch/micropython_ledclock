@@ -184,9 +184,11 @@ if __name__ == "__main__":
     oldTime = time.time()
 
     while True:
+        # check if an update is due
         if (time.time() - update_interval) > last_update:
             last_update, update_interval = setTime()
 
+        # check if display needs updating
         if time.time() != oldTime:
             oldTime = time.time()
             display.printTime(time.localtime()[3], time.localtime()[4],
