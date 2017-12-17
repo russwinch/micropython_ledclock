@@ -2,70 +2,14 @@
 led clock
 a ntp synching clock in micropython
 @author Russ Winch
-@version October 2017
+@version December 2017
 """
 
 import time
 import network
 import ntptime
 from machine import Pin, SPI
-
-class Wifi(object):
-    """
-    network functionality
-    """
-
-    # import network # required here?
-    
-    def __init__(self):
-        self.net = network.WLAN(network.STA_IF)
-
-    def retrieve_credentials(self):
-        """
-        collects wifi uid and password from text file
-        file should be named 'credentials.txt'
-        uid and password should be on separate lines:
-        uid
-        pass
-        """
-        try:
-            with open("credentials.txt") as c:
-                uid = c.readline()
-                pasw = c.readline()
-                return {'uid': uid.strip(), 'pasw': pasw.strip()}
-        except OSError:
-            print("couldn't load credentials file")
-            return False
-
-    def connect(self):
-        timeout = 15 # seconds
-
-        if not self.net.isconnected():
-            creds = self.retrieve_credentials()
-            if creds == False:
-                print("failed due to no wifi credentials. won't retry")
-                return False
-            print("connecting to network:", creds["uid"])
-            self.net.active(True)
-            self.net.connect(creds['uid'], creds['pasw'])
-            timeout += time.time()
-            while not self.net.isconnected():
-                print(self.net.status())
-                countdown = timeout - time.time()
-                if countdown > 0:
-                    print("timeout in ", countdown, "seconds")
-                    time.sleep(1)
-                else:
-                    print("could't connect. timed out!")
-                    return False
-            print('connected!')
-            print('ip config:', self.net.ifconfig())
-            return True
-
-    def test_connected(self):
-        print(self.net.status())
-        print(self.net.ifconfig())
-        return self.net.isconnected()
+from wifi import Wifi
 
 def setTime():
     success_update = 300 # 5 mins
@@ -173,23 +117,24 @@ if __name__ == "__main__":
     # connect to network
     display.printConn()
     wifi = Wifi()
-    wifi.connect()
+    online = wifi.connect()
 
-    display.printSync()
-    last_update, update_interval = setTime()
-    # while setTime() == False:
-    #     print('failed to set during initialise, 5 second retry')
-    #     time.sleep(5)
+    if online:
+        display.printSync()
+        last_update, update_interval = setTime()
+        # while setTime() == False:
+        #     print('failed to set during initialise, 5 second retry')
+        #     time.sleep(5)
 
-    oldTime = time.time()
+        oldTime = time.time()
 
-    while True:
-        # check if an update is due
-        if (time.time() - update_interval) > last_update:
-            last_update, update_interval = setTime()
+        while True:
+            # check if an update is due
+            if (time.time() - update_interval) > last_update:
+                last_update, update_interval = setTime()
 
-        # check if display needs updating
-        if time.time() != oldTime:
-            oldTime = time.time()
-            display.printTime(time.localtime()[3], time.localtime()[4],
-                    time.localtime()[5])
+            # check if display needs updating
+            if time.time() != oldTime:
+                oldTime = time.time()
+                display.printTime(time.localtime()[3], time.localtime()[4],
+                        time.localtime()[5])
