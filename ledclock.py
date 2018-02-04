@@ -14,13 +14,17 @@ from wifi import Wifi
 
 
 class DipSwitch:
-    """controls dipswitches."""
+    """
+    controls dipswitches.
+    improve this by passing in the pull up option.
+    """
 
     def __init__(self, switchPin):
         """initialise a dipswitch on the defined pin"""
         self.switch = Pin(switchPin, Pin.IN, Pin.PULL_UP)
 
     def value(self):
+        """returns the inverted dipswitch value. due to the pull up"""
         return 1 - self.switch.value()
 
 
@@ -65,12 +69,12 @@ class SevenSeg(object):
 
     def printTime(self, h, m, s, dips=None):
         """prints the time to the display"""
-        print(time.localtime())
+        print("----------")
+        print("{hrs}:{mins}:{secs}".format(hrs=h, mins=m, secs=s))
 
         for d, _ in enumerate(dips):
-            print(dips[d].value())
-        # print(time.time())
-        # print(ntptime.time())
+            print("dipswitch {d}: {val}".format(d=d, val=dips[d].value()))
+
         # if h > 12 and dip3.value() == 1:
         #     h -= 12 # 12 hour mode
         a = int(h / 10)
@@ -85,7 +89,7 @@ class SevenSeg(object):
         # data register
         dreg = bytearray(3)
         dreg[0] = 0b10000000 | h * 112 # if seconds are odd flash all decimals
-        dreg[1] = (a << 4) + b # shift first nibble and add second to form a byte
+        dreg[1] = (a << 4) + b # shift first nibble and add second
         dreg[2] = (c << 4) + d
         self.writeOut(dreg)
 
@@ -107,12 +111,12 @@ def setTime():
         ntptime.settime()
         update_interval = success_update
         print("succesfully synced time from ntp server: " + ntptime.host)
-        print("next update in " + str(update_interval) + " seconds")
+        print("next update in {} seconds".format(update_interval))
     except OSError as e:
         update_interval = fail_update
         print(e)
         print("error, couldn't retrieve time")
-        print("trying again in " + str(update_interval) + " seconds")
+        print("trying again in {} seconds".format(update_interval))
     finally:
         return last_update, update_interval
 
@@ -120,11 +124,7 @@ def setTime():
 def main():
     display = SevenSeg(15) # init display with GPIO15 as the CS pin
 
-    # dip1 = Pin(5, Pin.IN, Pin.PULL_UP) # D1
-    # dip2 = Pin(4, Pin.IN, Pin.PULL_UP) # D2
-    # dip3 = Pin(16, Pin.IN) # D0
-
-    switchPins = [5,4]
+    switchPins = [5,4] # D1, D2
     dips = []
     for i, _ in enumerate(switchPins):
         dips.append(DipSwitch(switchPins[i]))
@@ -132,30 +132,29 @@ def main():
     # connect to network
     display.printConn()
     wifi = Wifi()
-    online = wifi.connect()
+    online = False
+    while not online:
+        online = wifi.connect()
 
-    if online:
-        display.printSync()
-        last_update, update_interval = setTime()
-        # while setTime() == False:
-        #     print('failed to set during initialise, 5 second retry')
-        #     time.sleep(5)
+    display.printSync()
+    # issue here needs resolving as failure to retrive time results in 00:00
+    last_update, update_interval = setTime()
+    oldTime = time.time()
 
-        oldTime = time.time()
+    while True:
+        # check if an update is due
+        if (time.time() - update_interval) > last_update:
+            last_update, update_interval = setTime()
 
-        while True:
-            # check if an update is due
-            if (time.time() - update_interval) > last_update:
-                last_update, update_interval = setTime()
-
-            # check if display needs updating
-            if time.time() != oldTime:
-                oldTime = time.time()
-                display.printTime(
-                        h = time.localtime()[3],
-                        m = time.localtime()[4],
-                        s = time.localtime()[5],
-                        dips = dips)
+        # check if display needs updating
+        if time.time() != oldTime:
+            oldTime = time.time()
+            # print(time.localtime())
+            display.printTime(
+                    h = time.localtime()[3],
+                    m = time.localtime()[4],
+                    s = time.localtime()[5],
+                    dips = dips)
 
 
 if __name__ == "__main__":
