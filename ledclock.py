@@ -7,13 +7,13 @@ An NTP synching clock in micropython
 """
 
 import time
-import network
+# import network
 import ntptime
 from machine import Pin, SPI
 from wifi import Wifi
 
 
-class DipSwitch:
+class DipSwitch(object):
     """
     controls dipswitches.
     improve this by passing in the pull up option.
@@ -72,8 +72,9 @@ class SevenSeg(object):
         print("----------")
         print("{hrs}:{mins}:{secs}".format(hrs=h, mins=m, secs=s))
 
-        for d, _ in enumerate(dips):
-            print("dipswitch {d}: {val}".format(d=d, val=dips[d].value()))
+        if dips:
+            for d, _ in enumerate(dips):
+                print("dipswitch {d}: {val}".format(d=d, val=dips[d].value()))
 
         # if h > 12 and dip3.value() == 1:
         #     h -= 12 # 12 hour mode
@@ -96,7 +97,7 @@ class SevenSeg(object):
         # control register
         creg = bytearray(1)
         creg[0] = 0b11000001 # first 2 bits define special decode option.
-        if a == 0: # and dip1.value() == 1:
+        if a == 0  and dips[1].value() == 1:
             creg[0] |= 10000 # blank first digit with special decode
         self.writeOut(creg)
 
@@ -120,6 +121,17 @@ def setTime():
     finally:
         return last_update, update_interval
 
+
+# function to set RTC
+
+# function to convert from DEC to BCD
+
+# function to convert from BCD to DEC
+
+# function to retrieve the time from the RTC
+
+# function to log the retrieved data and any errors from the retreived time
+#load this from external file...
 
 def main():
     display = SevenSeg(15) # init display with GPIO15 as the CS pin
