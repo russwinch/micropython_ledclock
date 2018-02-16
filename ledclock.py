@@ -3,15 +3,14 @@ led clock.
 
 An NTP synching clock in micropython
 @author Russ Winch
-@version January 2018 
+@version 2.0 - February 2018 
 """
 
 import time
-# import network
 import ntptime
 from machine import I2C, Pin, SPI
-from wifi import Wifi
 from rtc import RTC
+from wifi import Wifi
 
 class DipSwitch(object):
     """
@@ -37,37 +36,37 @@ class SevenSeg(object):
         self.cs = Pin(chip_select_pin, Pin.OUT) # chip select
         self.cs.on()
 
-    def writeOut(self, data):
+    def write_out(self, data):
         """sends data to the display over the SPI bus"""
         self.cs.off()
         self.spi.write(data)
         self.cs.on()
 
-    def printSync(self):
+    def print_sync(self):
         """displays the word 'Sync'"""
         dreg = bytearray(3)
         dreg[0] = 0b10000000
         dreg[1] = 0b01011100
         dreg[2] = 0b01100001
-        self.writeOut(dreg)
+        self.write_out(dreg)
 
         creg = bytearray(1)
         creg[0] = 0b11001111
-        self.writeOut(creg)
+        self.write_out(creg)
 
-    def printConn(self):
+    def print_conn(self):
         """displays the word 'Conn'"""
         dreg = bytearray(3)
         dreg[0] = 0b10000000
         dreg[1] = 0b11000111
         dreg[2] = 0b01100110
-        self.writeOut(dreg)
+        self.write_out(dreg)
 
         creg = bytearray(1)
         creg[0] = 0b11001111
-        self.writeOut(creg)
+        self.write_out(creg)
 
-    def printTime(self, hour, minute, second, dips=None):
+    def print_time(self, hour, minute, second, dips=None):
         """prints the time to the display"""
         print("----------")
         print("{h}:{m}:{s}".format(h=hour, m=minute, s=second))
@@ -91,14 +90,14 @@ class SevenSeg(object):
         dreg[0] = 0b10000000 | bank_h * 112 # when seconds odd flash decimals
         dreg[1] = (bank_a << 4) + bank_b # shift first nibble and add second
         dreg[2] = (bank_c << 4) + bank_d # shift first nibble and add second
-        self.writeOut(dreg)
+        self.write_out(dreg)
 
         # control register
         creg = bytearray(1)
         creg[0] = 0b11000001 # first 2 bits define special decode option.
-        if bank_a == 0 and dips[1].value() == 1:
+        if bank_a == 0 and dips[1].value(): # dip 1 controls leading zero
             creg[0] |= 10000 # blank first digit with special decode
-        self.writeOut(creg)
+        self.write_out(creg)
 
 
 def retrieve_ntp_time():
@@ -122,7 +121,7 @@ def retrieve_ntp_time():
 
 
 def dst(hour, apply_dst, time_diff):
-    """Determines if DST dipswitch is set and if so applies time difference"""
+    """Applies time difference to hours if apply_dst is True"""
     if apply_dst:
         hour += time_diff
         if hour > 23:
@@ -136,24 +135,25 @@ def dst(hour, apply_dst, time_diff):
 def main():
     # initialise spi bus and i2c bus
     spi = SPI(1, baudrate=5000000, polarity=0, phase=0)
-    i2c = I2C(scl=Pin(16), sda=Pin(0), freq=100000)
+    i2c = I2C(scl=Pin(16), sda=Pin(0), freq=100000) # scl=D0 sda=D3
 
-    display = SevenSeg(15, spi) # init display with CS pin GPIO15 on spi bus
+    display = SevenSeg(15, spi) # init display with CS pin GPIO15 D8 on spi 
     rtc = RTC(i2c) # init rtc on i2c bus
 
+    # create dipswitches
     switchPins = [5,4] # D1, D2
     dips = []
     for i, _ in enumerate(switchPins):
         dips.append(DipSwitch(switchPins[i]))
 
     # connect to network
-    display.printConn()
+    display.print_conn()
     wifi = Wifi()
     online = False
     while not online:
         online = wifi.connect()
 
-    display.printSync()
+    display.print_sync()
     # issue here needs resolving as failure to retrive time results in 00:00
     last_update, update_interval = retrieve_ntp_time()
     rtc.set_time(time.localtime()[3:6])
@@ -170,14 +170,14 @@ def main():
         # check if display needs updating
         if rtc_time != old_time:
             old_time = rtc_time
-            display.printTime(
-                    hour=dst(
-                        hour=rtc_time.hour, 
-                        apply_dst=dips[0].value(),
-                        time_diff=1),
-                    minute=rtc_time.minute,
-                    second=rtc_time.second,
-                    dips=dips)
+            display.print_time(
+                        hour=dst(
+                            hour=rtc_time.hour, 
+                            apply_dst=dips[0].value(),
+                            time_diff=1),
+                        minute=rtc_time.minute,
+                        second=rtc_time.second,
+                        dips=dips)
 
 
 if __name__ == "__main__":
