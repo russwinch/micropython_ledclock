@@ -3,7 +3,7 @@ led clock.
 
 An NTP synching clock in micropython
 @author Russ Winch
-@version 2.0 - February 2018 
+@version 2.1 - February 2018 
 """
 
 import time
@@ -20,17 +20,14 @@ OptionsTuple = namedtuple("OptionsTuple", [
                                 "twelve_hour_mode"])
 
 class DipSwitch(object):
-    """
-    Controls dipswitches.
-    improve this by passing in the pull up option.
-    """
+    """Controls dipswitches."""
 
-    def __init__(self, switchPin):
+    def __init__(self, switch_pin):
         """initialise a dipswitch on the defined pin"""
-        self.switch = Pin(switchPin, Pin.IN, Pin.PULL_UP)
+        self.switch = Pin(switch_pin, Pin.IN, Pin.PULL_UP)
 
     def value(self):
-        """returns the inverted dipswitch value. due to the pull up"""
+        """returns the inverted dipswitch value, due to the pull up"""
         return 1 - self.switch.value()
 
 
@@ -73,7 +70,12 @@ class SevenSeg(object):
         creg[0] = 0b11001111
         self.write_out(creg)
 
-    def print_time(self, hour, minute, second, leading_zero=False,
+    def print_time(
+            self,
+            hour,
+            minute,
+            second,
+            leading_zero=False,
             flash_separator=True):
         """prints the time to the display"""
         print("{h}:{m}:{s}".format(h=hour, m=minute, s=second))
@@ -173,7 +175,6 @@ def main():
     options = OptionsTuple(
                 daylight_saving = dips[0].value,
                 flash_separator = True,
-                # leading_zero = dips[1].value,
                 leading_zero = True,
                 twelve_hour_mode = dips[1].value)
 
