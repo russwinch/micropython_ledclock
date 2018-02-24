@@ -9,12 +9,19 @@ An NTP synching clock in micropython
 import time
 import ntptime
 from machine import I2C, Pin, SPI
+from ucollections import namedtuple
 from rtc import RTC
 from wifi import Wifi
 
+OptionsTuple = namedtuple("OptionsTuple", [
+                                "daylight_saving",
+                                "flash_separator",
+                                "leading_zero",
+                                "twelve_hour_mode"])
+
 class DipSwitch(object):
     """
-    controls dipswitches.
+    Controls dipswitches.
     improve this by passing in the pull up option.
     """
 
@@ -28,7 +35,7 @@ class DipSwitch(object):
 
 
 class SevenSeg(object):
-    """control of seven segment displays via MC14489B LED driver"""
+    """Control of seven segment displays via MC14489B LED driver."""
 
     def __init__(self, chip_select_pin, spi):
         """initialise the SPI bus""" 
@@ -66,24 +73,21 @@ class SevenSeg(object):
         creg[0] = 0b11001111
         self.write_out(creg)
 
-    def print_time(self, hour, minute, second, dips=None):
+    def print_time(self, hour, minute, second, leading_zero=False,
+            flash_separator=True):
         """prints the time to the display"""
-        print("----------")
         print("{h}:{m}:{s}".format(h=hour, m=minute, s=second))
-
-        if dips:
-            for d, _ in enumerate(dips):
-                print("dipswitch {d}: {val}".format(d=d, val=dips[d].value()))
+        print("----------")
 
         # break digits down into led banks
         bank_a = int(hour / 10)
         bank_b = hour % 10
         bank_c = int(minute / 10)
         bank_d = minute % 10
-        # if dip2.value() == 1:
-        bank_h = (second % 2) # flashing separator
-        # else:
-        #     h = 1 # static separator
+        if flash_separator:
+            bank_h = (second % 2) # flashing separator
+        else:
+            bank_h = 1 # static separator
 
         # data register
         dreg = bytearray(3)
@@ -95,7 +99,7 @@ class SevenSeg(object):
         # control register
         creg = bytearray(1)
         creg[0] = 0b11000001 # first 2 bits define special decode option.
-        if bank_a == 0 and dips[1].value(): # dip 1 controls leading zero
+        if bank_a == 0 and not leading_zero:
             creg[0] |= 10000 # blank first digit with special decode
         self.write_out(creg)
 
@@ -129,6 +133,25 @@ def dst(hour, apply_dst, time_diff):
     return hour
 
 
+def hour_mode(hour, apply_12hr):
+    """Applies 12 hour mode if apply_12hr is True, else 24 hour mode."""
+    if apply_12hr:
+        if hour > 12:
+            hour -= 12
+    return hour
+
+
+def get_options(options):
+    """Retrieves the latest options from dipswitches or returns bools."""
+    latest_options = []
+    for o,_ in enumerate(options):
+        if type(options[o]) == bool:
+            latest_options.append(options[o])
+        else:
+            latest_options.append(options[o]())
+    return OptionsTuple(*latest_options)
+
+
 # function to log the retrieved data and any errors from the retreived time
 #load this from external file...
 
@@ -145,6 +168,14 @@ def main():
     dips = []
     for i, _ in enumerate(switchPins):
         dips.append(DipSwitch(switchPins[i]))
+
+    # settings for the clock
+    options = OptionsTuple(
+                daylight_saving = dips[0].value,
+                flash_separator = True,
+                # leading_zero = dips[1].value,
+                leading_zero = True,
+                twelve_hour_mode = dips[1].value)
 
     # connect to network
     display.print_conn()
@@ -170,15 +201,19 @@ def main():
         # check if display needs updating
         if rtc_time != old_time:
             old_time = rtc_time
+            retrieved_options = get_options(options)
+            print(retrieved_options)
             display.print_time(
-                        hour=dst(
-                            hour=rtc_time.hour, 
-                            apply_dst=dips[0].value(),
-                            time_diff=1),
+                        hour=hour_mode(
+                            hour=dst(
+                                hour=rtc_time.hour,
+                                apply_dst=retrieved_options.daylight_saving,
+                                time_diff=1),
+                            apply_12hr=retrieved_options.twelve_hour_mode),
                         minute=rtc_time.minute,
                         second=rtc_time.second,
-                        dips=dips)
-
+                        leading_zero=retrieved_options.leading_zero,
+                        flash_separator=retrieved_options.flash_separator)
 
 if __name__ == "__main__":
     main()

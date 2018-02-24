@@ -10,14 +10,15 @@ https://github.com/adafruit/Adafruit-uRTC
 """
 
 # import time # for testing only
-import ucollections
+# import ucollections
+from ucollections import namedtuple
 # from machine import I2C, Pin # for testing only
 
 # for testing only, move our of here and pass in these variables
 # i2c = I2C(scl=Pin(16), sda=Pin(0), freq=100000)
 # address = 0x68
 
-TimeTuple = ucollections.namedtuple("TimeTuple", ["hour", "minute", "second"])
+TimeTuple = namedtuple("TimeTuple", ["hour", "minute", "second"])
 
 def timetuple(hour=0, minute=0, second=0):
     """creates a TimeTuple named tuple object"""
